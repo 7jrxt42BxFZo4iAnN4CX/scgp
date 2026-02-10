@@ -11,8 +11,9 @@ Standalone GPU-accelerated candlestick chart viewer. Pulls market data from Yaho
 - Drag panning across historical data
 - Crosshair with OHLCV tooltip
 - Price and time axes with cursor tracking labels
-- Switch tickers on the fly (Escape to open input)
-- Configurable interval, range, and window size via CLI
+- Interactive settings overlay: switch ticker, interval, and range on the fly
+- Full history support (`max` range)
+- Configurable via CLI or in-app settings
 
 ## Installation
 
@@ -33,27 +34,39 @@ The binary will be at `target/release/scgp`.
 ## Usage
 
 ```
-scgp -t AAPL
-scgp -t MSFT -i 1h -r 5d
-scgp -t TSLA -i 5m -r 1d -s 2560x1440
-scgp -t BTC-USD -m
+scgp                                   # opens with ticker input dialog
+scgp -t AAPL                           # loads AAPL daily 1y
+scgp -t MSFT -i 1h -r 730d            # hourly data for ~2 years
+scgp -t TSLA -i 5m -r 60d -s 2560x1440
+scgp -t BTC-USD -i 1d -r max -m       # full history, maximized
 ```
 
 ### CLI arguments
 
 | Flag | Long | Default | Description |
 |------|------|---------|-------------|
-| `-t` | `--ticker` | *required* | Ticker symbol (e.g. AAPL, MSFT, BTC-USD) |
-| `-i` | `--interval` | `1d` | Candle interval (1d, 1h, 5m, etc.) |
-| `-r` | `--range` | `1y` | Data range (1y, 6mo, 1mo, 5d, 1d, etc.) |
+| `-t` | `--ticker` | *optional* | Ticker symbol (e.g. AAPL, MSFT, BTC-USD). Opens input dialog if omitted |
+| `-i` | `--interval` | `1d` | Candle interval (1m, 5m, 15m, 30m, 1h, 1d, 1wk, 1mo) |
+| `-r` | `--range` | `1y` | Data range (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, max, or Nd e.g. 60d, 730d) |
 | `-s` | `--size` | `1920x1080` | Window size WxH |
 | `-m` | `--maximized` | `false` | Maximize window |
+
+### Yahoo Finance range limits
+
+| Interval | Max range |
+|----------|-----------|
+| 1m | 7 days |
+| 5m, 15m, 30m | 60 days |
+| 1h | 730 days |
+| 1d, 1wk, 1mo | unlimited (max) |
 
 ## Keybindings
 
 | Key | Action |
 |-----|--------|
-| Escape | Toggle ticker input dialog |
+| Escape | Toggle settings overlay (ticker, interval, range) |
+| Enter | Load ticker (empty input reloads current with new settings) |
+| ? | Toggle help |
 | Scroll wheel | Zoom in/out (anchored to cursor) |
 | Left mouse drag | Pan through data |
 
