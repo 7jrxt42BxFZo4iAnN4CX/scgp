@@ -1,0 +1,39 @@
+[package]
+name = "scgp"
+version = "0.1.0"
+edition = "2024"
+description = "Fast GPU-accelerated candlestick chart viewer for Yahoo Finance data"
+license = "MIT"
+keywords = ["finance", "candlestick", "chart", "gpui", "trading"]
+categories = ["visualization", "finance"]
+
+[lints.rust]
+unused_results = "allow"
+async_fn_in_trait = "allow"
+
+[dependencies]
+# GPUI Framework
+gpui = "0.2"
+gpui-component = "0.5"
+gpui-component-assets = "0.5"
+
+# Yahoo Finance API
+yahoo_finance_api = "4.1.0"
+
+# Async runtime
+tokio = { version = "1.45", features = ["rt-multi-thread", "sync", "macros", "time"] }
+
+# Data structures
+ordered-float = "5.0"
+
+# Date/Time
+chrono = "0.4"
+time = "0.3"
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Utilities
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
