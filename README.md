@@ -2,7 +2,7 @@
 
 Standalone GPU-accelerated candlestick chart viewer. Pulls market data from Yahoo Finance and renders interactive charts using [GPUI](https://github.com/zed-industries/zed/tree/main/crates/gpui).
 
-![screenshot](assets/screenshot.png)
+![screenshot](assets/Screenshot_20260208_232808.png)
 
 ## Features
 
@@ -17,13 +17,13 @@ Standalone GPU-accelerated candlestick chart viewer. Pulls market data from Yaho
 ## Installation
 
 ```sh
-cargo install --git https://github.com/user/scgp
+cargo install --git https://github.com/7jrxt42BxFZo4iAnN4CX/scgp
 ```
 
 Or build from source:
 
 ```sh
-git clone https://github.com/user/scgp
+git clone https://github.com/7jrxt42BxFZo4iAnN4CX/scgp
 cd scgp
 cargo build --release
 ```
