@@ -15,7 +15,7 @@ use crate::app::ChartWindow;
 struct Cli {
     /// Ticker symbol (e.g. AAPL, MSFT, TSLA)
     #[arg(short, long)]
-    ticker: String,
+    ticker: Option<String>,
 
     /// Maximize window
     #[arg(short = 'm', long, default_value_t = false)]
@@ -58,13 +58,13 @@ fn main() {
 
     let cli = Cli::parse();
 
-    let ticker = cli.ticker.to_uppercase();
+    let ticker = cli.ticker.map(|t| t.to_uppercase());
     let interval = cli.interval.clone();
     let range = cli.range.clone();
     let maximized = cli.maximized;
     let (win_w, win_h) = parse_size(&cli.size);
 
-    tracing::info!("scgp: {} interval={} range={}", ticker, interval, range);
+    tracing::info!("scgp: {:?} interval={} range={}", ticker, interval, range);
 
     // Create Tokio runtime (leaked to keep alive for the lifetime of the process)
     let rt = Box::leak(Box::new(
@@ -100,7 +100,21 @@ fn main() {
                     ..WindowOptions::default()
                 },
                 |window, cx| {
-                    window.set_window_title(&format!("scgp - {}", ticker));
+                    gpui_component::theme::Theme::change(
+                        gpui_component::theme::ThemeMode::Dark,
+                        Some(window),
+                        cx,
+                    );
+                    {
+                        let theme = gpui_component::theme::Theme::global_mut(cx);
+                        theme.colors.background = gpui::black();
+                        theme.colors.foreground = gpui::white();
+                    }
+                    let title = match &ticker {
+                        Some(t) => format!("scgp - {}", t),
+                        None => "scgp".to_string(),
+                    };
+                    window.set_window_title(&title);
                     let chart_window = cx.new(|cx| {
                         ChartWindow::new(
                             ticker.clone(),

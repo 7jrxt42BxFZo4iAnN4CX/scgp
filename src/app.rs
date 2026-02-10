@@ -6,6 +6,47 @@ use gpui_component::input::{Input, InputEvent, InputState};
 use crate::chart::CandlestickChart;
 use crate::data::{self, Quote};
 
+const INTERVALS: &[&str] = &["1m", "5m", "15m", "30m", "1h", "1d", "1wk", "1mo"];
+
+/// Yahoo Finance limits: small intervals only available for short ranges.
+fn ranges_for_interval(interval: &str) -> &'static [&'static str] {
+    match interval {
+        "1m" => &["1d", "5d", "7d"],
+        "2m" | "5m" | "15m" | "30m" => &["1d", "5d", "1mo", "60d"],
+        "60m" | "90m" | "1h" => &["1d", "5d", "1mo", "3mo", "6mo", "1y", "730d"],
+        _ => &["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "max"],
+    }
+}
+
+/// Clamp range to the allowed set for the given interval.
+fn clamp_range<'a>(interval: &str, range: &str) -> &'a str {
+    let allowed = ranges_for_interval(interval);
+    if allowed.contains(&range) {
+        // Return the matching static str
+        allowed.iter().find(|&&r| r == range).copied().unwrap()
+    } else {
+        allowed.last().unwrap()
+    }
+}
+
+fn chip(label: &str, selected: bool) -> Div {
+    let base = div()
+        .px_2()
+        .py(px(3.))
+        .rounded_md()
+        .text_sm()
+        .cursor_pointer()
+        .child(label.to_string());
+
+    if selected {
+        base.bg(rgb(0x3b82f6)).text_color(rgb(0xffffff))
+    } else {
+        base.bg(rgb(0x2a2a2a))
+            .text_color(rgb(0xa0a0a0))
+            .hover(|s| s.bg(rgb(0x3a3a3a)))
+    }
+}
+
 fn help_row(key: &str, desc: &str) -> Div {
     div()
         .flex()
@@ -53,7 +94,7 @@ pub struct ChartWindow {
 
 impl ChartWindow {
     pub fn new(
-        ticker: String,
+        ticker: Option<String>,
         interval: String,
         range: String,
         tokio_handle: tokio::runtime::Handle,
@@ -70,17 +111,32 @@ impl ChartWindow {
         let subscription = cx.subscribe_in(&ticker_input, window, |view: &mut Self, _, event: &InputEvent, window, cx| {
             if let InputEvent::PressEnter { .. } = event {
                 let new_ticker = view.ticker_input.read(cx).value().to_string().trim().to_uppercase();
-                if !new_ticker.is_empty() {
+                let ticker = if new_ticker.is_empty() {
+                    view.ticker.clone()
+                } else {
+                    new_ticker
+                };
+                if !ticker.is_empty() {
                     view.show_ticker_input = false;
-                    view.load_ticker(new_ticker, window, cx);
+                    view.load_ticker(ticker, window, cx);
                 }
             }
         });
 
+        let has_ticker = ticker.is_some();
+        let show_ticker_input = !has_ticker;
+        let ticker_str = ticker.unwrap_or_default();
+
+        if !has_ticker {
+            ticker_input.update(cx, |input, cx| {
+                input.focus(window, cx);
+            });
+        }
+
         let this = Self {
-            ticker: ticker.clone(),
+            ticker: ticker_str.clone(),
             quotes: Arc::new(Vec::new()),
-            loading: true,
+            loading: has_ticker,
             error_message: None,
             chart_scroll_offset: usize::MAX,
             chart_candles_per_screen: 200,
@@ -94,15 +150,16 @@ impl ChartWindow {
             tokio_handle: tokio_handle.clone(),
             interval: interval.clone(),
             range: range.clone(),
-            show_ticker_input: false,
+            show_ticker_input,
             show_help: false,
             ticker_input,
             focus_handle,
             _subscription: subscription,
         };
 
-        // Start initial data loading
-        Self::spawn_fetch(ticker, interval, range, tokio_handle, cx);
+        if has_ticker {
+            Self::spawn_fetch(ticker_str, interval, range, tokio_handle, cx);
+        }
 
         this
     }
@@ -132,6 +189,103 @@ impl ChartWindow {
         Self::spawn_fetch(ticker, interval, range, handle, cx);
 
         cx.notify();
+    }
+
+    fn render_ticker_overlay(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let current_interval = self.interval.clone();
+        let current_range = self.range.clone();
+        let allowed_ranges = ranges_for_interval(&current_interval);
+
+        let interval_chips = div()
+            .flex()
+            .flex_col()
+            .gap_1()
+            .child(
+                div()
+                    .text_sm()
+                    .text_color(rgb(0xa0a0a0))
+                    .child("Interval:"),
+            )
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .flex_wrap()
+                    .gap_1()
+                    .children(INTERVALS.iter().map(|&opt| {
+                        let is_selected = opt == current_interval;
+                        let opt_owned = opt.to_string();
+                        chip(opt, is_selected)
+                            .id(SharedString::from(format!("interval_{}", opt)))
+                            .on_click(cx.listener(move |view, _, window, cx| {
+                                view.interval = opt_owned.clone();
+                                view.range = clamp_range(&view.interval, &view.range).to_string();
+                                view.ticker_input.update(cx, |input, cx| input.focus(window, cx));
+                                cx.notify();
+                            }))
+                    })),
+            );
+
+        let range_chips = div()
+            .flex()
+            .flex_col()
+            .gap_1()
+            .child(
+                div()
+                    .text_sm()
+                    .text_color(rgb(0xa0a0a0))
+                    .child("Range:"),
+            )
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .flex_wrap()
+                    .gap_1()
+                    .children(allowed_ranges.iter().map(|&opt| {
+                        let is_selected = opt == current_range;
+                        let opt_owned = opt.to_string();
+                        chip(opt, is_selected)
+                            .id(SharedString::from(format!("range_{}", opt)))
+                            .on_click(cx.listener(move |view, _, window, cx| {
+                                view.range = opt_owned.clone();
+                                view.ticker_input.update(cx, |input, cx| input.focus(window, cx));
+                                cx.notify();
+                            }))
+                    })),
+            );
+
+        div()
+            .absolute()
+            .top(px(0.))
+            .left(px(0.))
+            .right(px(0.))
+            .bottom(px(0.))
+            .flex()
+            .items_center()
+            .justify_center()
+            .bg(rgba(0x00000088))
+            .child(
+                div()
+                    .w(px(420.))
+                    .p_4()
+                    .bg(rgb(0x1a1a1a))
+                    .border_1()
+                    .border_color(rgb(0x3e3e3e))
+                    .rounded_lg()
+                    .flex()
+                    .flex_col()
+                    .gap_3()
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(rgb(0xa0a0a0))
+                            .child("Enter ticker symbol:"),
+                    )
+                    .child(Input::new(&self.ticker_input).bg(rgb(0x0a0a0a)).text_color(rgb(0xffffff)))
+                    .child(interval_chips)
+                    .child(range_chips),
+            )
     }
 
     fn max_scroll_offset(&self) -> usize {
@@ -482,39 +636,8 @@ impl Render for ChartWindow {
                         self.range.clone(),
                     )),
             )
-            // Ticker input overlay
             .when(show_input, |this| {
-                this.child(
-                    div()
-                        .absolute()
-                        .top(px(0.))
-                        .left(px(0.))
-                        .right(px(0.))
-                        .bottom(px(0.))
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .bg(rgba(0x00000088))
-                        .child(
-                            div()
-                                .w(px(300.))
-                                .p_4()
-                                .bg(rgb(0x1a1a1a))
-                                .border_1()
-                                .border_color(rgb(0x3e3e3e))
-                                .rounded_lg()
-                                .flex()
-                                .flex_col()
-                                .gap_3()
-                                .child(
-                                    div()
-                                        .text_sm()
-                                        .text_color(rgb(0xa0a0a0))
-                                        .child("Enter ticker symbol:"),
-                                )
-                                .child(Input::new(&self.ticker_input)),
-                        ),
-                )
+                this.child(self.render_ticker_overlay(cx))
             })
             // Help overlay
             .when(show_help, |this| {

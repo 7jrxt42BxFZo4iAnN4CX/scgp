@@ -92,10 +92,26 @@ pub async fn fetch_quotes(
     let connector =
         yahoo_finance_api::YahooConnector::new().map_err(|e| FetchError::Other(e.to_string()))?;
 
-    let response = connector
-        .get_quote_range(ticker, interval, range)
-        .await
-        .map_err(|e| classify_yahoo_error(e, ticker))?;
+    let response = if range == "max" {
+        let start = time::OffsetDateTime::UNIX_EPOCH;
+        let end = time::OffsetDateTime::now_utc();
+        connector
+            .get_quote_history_interval(ticker, start, end, interval)
+            .await
+            .map_err(|e| classify_yahoo_error(e, ticker))?
+    } else if let Some(days) = range.strip_suffix('d').and_then(|d| d.parse::<i64>().ok()) {
+        let end = time::OffsetDateTime::now_utc();
+        let start = end - time::Duration::days(days - 1);
+        connector
+            .get_quote_history_interval(ticker, start, end, interval)
+            .await
+            .map_err(|e| classify_yahoo_error(e, ticker))?
+    } else {
+        connector
+            .get_quote_range(ticker, interval, range)
+            .await
+            .map_err(|e| classify_yahoo_error(e, ticker))?
+    };
 
     let yahoo_quotes = response
         .quotes()
