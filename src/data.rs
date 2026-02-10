@@ -58,7 +58,7 @@ pub fn yahoo_to_quotes(yahoo_quotes: Vec<yahoo_finance_api::Quote>) -> Vec<Quote
     let mut quotes: Vec<Quote> = yahoo_quotes
         .into_iter()
         .filter_map(|yq| {
-            let time = DateTime::from_timestamp(i64::try_from(yq.timestamp).ok()?, 0)?;
+            let time = DateTime::from_timestamp(yq.timestamp, 0)?;
             Quote::new(time, yq.open, yq.high, yq.low, yq.close, yq.volume as f64)
         })
         .collect();

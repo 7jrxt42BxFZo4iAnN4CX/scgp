@@ -316,6 +316,7 @@ pub struct CandlestickChart {
 }
 
 impl CandlestickChart {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         quotes: Arc<Vec<Quote>>,
         scroll_offset: usize,
@@ -607,8 +608,8 @@ impl RenderOnce for CandlestickChart {
                                 .size_full(),
                             );
 
-                        if let (Some(pos), Some(idx)) = (crosshair_position, hovered_quote_index) {
-                            if let Some(quote) = quotes_for_crosshair.get(idx) {
+                        if let (Some(pos), Some(idx)) = (crosshair_position, hovered_quote_index)
+                            && let Some(quote) = quotes_for_crosshair.get(idx) {
                                 let cb = chart_bounds_for_crosshair
                                     .read()
                                     .ok()
@@ -616,7 +617,6 @@ impl RenderOnce for CandlestickChart {
                                 chart_container = chart_container
                                     .child(render_crosshair_overlay(quote, pos, cb));
                             }
-                        }
 
                         chart_container
                     })

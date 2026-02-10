@@ -298,15 +298,14 @@ impl Render for ChartWindow {
                             view.crosshair_position = Some(event.position);
 
                             // Compute mouse_x_ratio for zoom-to-cursor
-                            if let Ok(guard) = view.chart_bounds.read() {
-                                if let Some(bounds) = *guard {
+                            if let Ok(guard) = view.chart_bounds.read()
+                                && let Some(bounds) = *guard {
                                     let relative_x: f64 = ((event.position.x
                                         - bounds.origin.x)
                                         / bounds.size.width)
                                         .into();
                                     view.mouse_x_ratio = Some(relative_x.clamp(0.0, 1.0));
                                 }
-                            }
 
                             // Drag panning
                             if view.is_dragging {
@@ -314,8 +313,8 @@ impl Render for ChartWindow {
                                     let delta_x: f64 =
                                         (event.position.x - last_pos.x).into();
 
-                                    if let Ok(guard) = view.chart_bounds.read() {
-                                        if let Some(bounds) = *guard {
+                                    if let Ok(guard) = view.chart_bounds.read()
+                                        && let Some(bounds) = *guard {
                                             let chart_width: f64 =
                                                 bounds.size.width.into();
                                             if chart_width > 0.0 {
@@ -352,14 +351,13 @@ impl Render for ChartWindow {
                                                 }
                                             }
                                         }
-                                    }
                                 }
                                 view.last_mouse_position = Some(event.position);
                             }
 
                             // Compute hovered candle index
-                            if let Ok(guard) = view.chart_bounds.read() {
-                                if let Some(bounds) = *guard {
+                            if let Ok(guard) = view.chart_bounds.read()
+                                && let Some(bounds) = *guard {
                                     let relative_x: f64 = ((event.position.x
                                         - bounds.origin.x)
                                         / bounds.size.width)
@@ -389,7 +387,6 @@ impl Render for ChartWindow {
                                         view.hovered_quote_index = Some(quote_idx);
                                     }
                                 }
-                            }
 
                             cx.notify();
                         },
