@@ -6,3 +6,6 @@
 *.swo
 *~
 .DS_Store
+
+# Agent config
+.codewhale/
